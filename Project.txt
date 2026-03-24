@@ -1,0 +1,65 @@
+To build a professional-grade Agentic RAG system, the data ingestion pipeline must be robust enough to handle unstructured data while ensuring the "Agent" can later search it with high precision.
+
+Here is the technical breakdown and the code structure for your Data Ingestion Pipeline, designed to meet the high standards of an AI/ML Engineer portfolio.
+
+1. High-Level Ingestion Strategy
+A basic "load and split" approach is often insufficient for complex documents. This pipeline implements Recursive Character Splitting and Persistent Vector Storage to ensure that the context remains meaningful for the LLM.
+
+2. Implementation Code
+You can use the following Python structure as the foundation for your ingestion.py script.
+
+Python
+import os
+from langchain_community.document_loaders import PyPDFLoader, DirectoryLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.vectorstores import Chroma
+
+# 1. Configuration
+DATA_PATH = "data/"
+CHROMA_PATH = "chroma_db"
+
+def ingest_documents():
+    # 2. Load Documents
+    # Using DirectoryLoader to handle multiple PDFs at once
+    loader = DirectoryLoader(DATA_PATH, glob="*.pdf", loader_cls=PyPDFLoader)
+    documents = loader.load()
+    print(f"Loaded {len(documents)} document pages.")
+
+    # 3. Recursive Text Splitting
+    # This maintains paragraph/sentence integrity better than simple splits
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200,
+        add_start_index=True
+    )
+    chunks = text_splitter.split_documents(documents)
+    print(f"Split into {len(chunks)} chunks.")
+
+    # 4. Initialize Embeddings
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+
+    # 5. Create and Persist Vector Store
+    # Persistent storage prevents re-embedding costs on every run
+    vector_store = Chroma.from_documents(
+        documents=chunks,
+        embedding=embeddings,
+        persist_directory=CHROMA_PATH
+    )
+    
+    print(f"✅ Ingestion complete. Vector store saved to {CHROMA_PATH}")
+
+if __name__ == "__main__":
+    ingest_documents()
+3. Professional Enhancements (The "Engineer" Touch)
+To make this pipeline stand out in your repository, consider these additions:
+
+Metadata Enrichment: Don't just store the text. Add metadata such as the filename, page number, and a "summary" tag to each chunk. This allows your Agent to perform Filtered Retrieval (e.g., "Search only in the 2012 policy file").
+
+Persistent Storage: Notice the persist_directory in the code above. In an enterprise setting, re-embedding data every time a script runs is a major cost-leak. Showing you understand Persistence is a high-signal trait.
+
+Duplicate Detection: Before adding new documents, implement a check (like a hash of the file) to ensure you aren't embedding the same document twice, which would clutter the vector space and decrease accuracy.
+
+Next Actionable Step
+Once you have this ingestion script running, the next move is to build the Agentic Reasoning Loop using LangGraph. This will allow the bot to "decide" whether the information retrieved from this database is enough to answer a user's question or if it needs to keep looking.
+

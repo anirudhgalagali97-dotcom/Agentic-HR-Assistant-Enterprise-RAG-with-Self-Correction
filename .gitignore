@@ -1,0 +1,53 @@
+# Environment
+.env
+*.env.local
+
+# Data (don't commit PDFs or vector store)
+data/documents/*.pdf
+data/chroma_db/
+data/documents/*.pkl
+
+# Logs
+logs/*.log
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Build
+dist/
+build/
+*.egg-info/
+
+# Docker
+.dockerignore
+
+# Results
+evaluation_results.json
+*.csv

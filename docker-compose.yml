@@ -1,0 +1,67 @@
+# =============================================================================
+# Docker Compose for Agentic RAG System
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # FastAPI Backend
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agentic-rag-api
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - TAVILY_API_KEY=${TAVILY_API_KEY}
+      - PYTHONUNBUFFERED=1
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - agentic-rag-network
+    command: ["python", "-m", "api.main"]
+
+  # Gradio Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agentic-rag-frontend
+    ports:
+      - "7860:7860"
+    environment:
+      - API_BASE_URL=http://api:8000
+      - GRADIO_PORT=7860
+      - GRADIO_SHARE=false
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - agentic-rag-network
+    command: ["python", "-m", "frontend.app"]
+
+networks:
+  agentic-rag-network:
+    driver: bridge
+
+volumes:
+  data:
+    driver: local
+  logs:
+    driver: local
