@@ -38,7 +38,7 @@ except ImportError:
 
 # Import the agent graph
 from agents.graph import get_agent, AgenticRAGAgent
-from config.settings import get_openai_api_key, settings
+from config.settings import get_ollama_config, settings
 
 
 # HR-Related Test Questions
@@ -167,6 +167,7 @@ class AgenticRAGEvaluator:
         """
         result = EvaluationResult(
             question=question,
+            answer="",  # Initialize with empty answer, will be updated after agent call
             expected_output=expected_output,
             status="running"
         )
@@ -183,8 +184,16 @@ class AgenticRAGEvaluator:
             
             agent_result = agent.invoke(question)
             
-            result.answer = agent_result.get("answer", "")
-            result.status = "completed" if agent_result.get("status") == "success" else "failed"
+            # Extract the generated answer from the agent response
+            generated_answer = agent_result.get("answer", "No answer generated")
+            
+            # Create result with the generated answer
+            result = EvaluationResult(
+                question=question,
+                answer=generated_answer,
+                expected_output=expected_output,
+                status="completed" if agent_result.get("status") == "success" else "failed"
+            )
             
             # Extract retrieval context
             context = []
@@ -421,14 +430,12 @@ def run_evaluation_suite():
         print("\nNote: DeepEval requires an OpenAI API key for evaluation.")
         return None
     
-    # Verify API key
+    # Verify Ollama configuration
     try:
-        api_key = get_openai_api_key()
-        if not api_key or api_key == "your-openai-api-key-here":
-            print("\n⚠️ WARNING: OPENAI_API_KEY not properly set.")
-            print("DeepEval metrics require a valid API key.")
-    except ValueError:
-        print("\n⚠️ WARNING: OPENAI_API_KEY not found in environment.")
+        base_url, model = get_ollama_config()
+        print(f"\n[INFO] Using Ollama: {model} at {base_url}")
+    except Exception as e:
+        print(f"\n⚠️ WARNING: Ollama configuration error: {e}")
     
     # Initialize evaluator
     try:

@@ -79,13 +79,13 @@ def create_agentic_rag_graph(config: GraphConfig = None) -> StateGraph:
         # Always check for hallucinations
         if state.get("relevant_documents"):
             return "check_hallucination"
-        return END
+        return "end"
     
     def route_after_check(state: AgentState) -> str:
         """Route after hallucination check."""
         if state.get("route") == "generate":
             return "generate"
-        return END
+        return "end"
     
     # Add edges with routing
     workflow.add_conditional_edges(
@@ -152,31 +152,55 @@ class AgenticRAGAgent:
         """Initialize the agent."""
         logger.info("Initializing Agentic RAG Agent")
     
-    def invoke(self, question: str, thread_id: str = None) -> Dict[str, Any]:
+    def invoke(self, question: str, thread_id: str = "eval-session") -> Dict[str, Any]:
         """
         Invoke the agent with a question.
         
         Args:
-            question: The user's question
-            thread_id: Optional thread ID for conversation continuity
+            question: The user's question (must be a non-empty string)
+            thread_id: Optional thread ID for conversation continuity (defaults to "eval-session")
             
         Returns:
             Dictionary containing the answer and metadata
         """
-        logger.info(f"Invoking agent with question: {question[:100]}...")
+        # Ensure question is a valid string BEFORE any processing
+        if not isinstance(question, str):
+            logger.error(f"Question must be a string, got {type(question)}")
+            return {
+                "answer": "Error: Question must be a string.",
+                "question": str(question) if question else "None",
+                "status": "error",
+                "error": f"Invalid question type: {type(question)}"
+            }
+        
+        # Strip whitespace and check for empty
+        question = question.strip()
+        if not question:
+            logger.error("Question is empty")
+            return {
+                "answer": "Error: Question cannot be empty.",
+                "question": "",
+                "status": "error",
+                "error": "Question cannot be empty"
+            }
+        
+        logger.info(f"Invoking agent with question: {question[:100] if question else 'None'}...")
         
         # Create initial state
         initial_state = create_initial_state(question)
         
-        # Configure thread for memory
-        config = {}
-        if thread_id:
-            config["configurable"] = {"thread_id": thread_id}
+        # Ensure route is always a valid string
+        if "route" in initial_state and not isinstance(initial_state["route"], str):
+            initial_state["route"] = str(initial_state["route"])
+        
+        # Configure thread for memory (MemorySaver always needs a thread_id)
+        config = {"configurable": {"thread_id": thread_id}}
         
         # Run the graph
         try:
             result = self.graph.invoke(initial_state, config=config)
             
+            # Extract and normalize the result
             return {
                 "answer": result.get("generation", ""),
                 "question": question,
@@ -184,14 +208,24 @@ class AgenticRAGAgent:
                 "context_precision": result.get("context_precision", 0.0),
                 "hallucination_score": result.get("hallucination_score", 0.0),
                 "iterations": result.get("iteration", 0),
-                "route": result.get("route", "unknown"),
-                "reasoning": result.get("reasoning", ""),
+                "route": str(result.get("route", "unknown")),
+                "reasoning": str(result.get("reasoning", "")),
                 "relevant_documents": result.get("relevant_documents", []),
                 "web_search_results": result.get("web_search_results", []),
                 "status": "success"
             }
         except Exception as e:
             logger.error(f"Agent invocation failed: {e}")
+            # Check if this is a message format error
+            error_msg = str(e)
+            if "messages" in error_msg.lower() or "format" in error_msg.lower():
+                logger.error(f"Message format error detected. Question type: {type(question)}")
+                return {
+                    "answer": "I apologize, but I encountered a data format error processing your question. Please try rephrasing your question.",
+                    "question": question,
+                    "status": "error",
+                    "error": f"Message format error: {error_msg}"
+                }
             return {
                 "answer": f"I apologize, but I encountered an error processing your question: {str(e)}",
                 "question": question,
@@ -199,7 +233,7 @@ class AgenticRAGAgent:
                 "error": str(e)
             }
     
-    async def ainvoke(self, question: str, thread_id: str = None) -> Dict[str, Any]:
+    async def ainvoke(self, question: str, thread_id: str = "default-session") -> Dict[str, Any]:
         """Async version of invoke."""
         import asyncio
         return await asyncio.get_event_loop().run_in_executor(

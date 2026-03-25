@@ -6,12 +6,12 @@ from typing import List, Dict, Any, Optional
 import logging
 import json
 from langchain_core.documents import Document
-from langchain_core.output_parsers import StrOutputParser
+from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
+from langchain_ollama import ChatOllama
 from duckduckgo_search import DDGS
 
-from config.settings import settings, get_openai_api_key
+from config.settings import settings, get_ollama_config
 from .state import AgentState, GradeScore, QueryAnalysis
 
 
@@ -19,13 +19,20 @@ logger = logging.getLogger(__name__)
 
 
 # LLM Initialization
-def get_llm(model: str = None, temperature: float = 0.0) -> ChatOpenAI:
-    """Get configured LLM instance."""
-    return ChatOpenAI(
-        model=model or settings.llm_model,
-        temperature=temperature,
-        api_key=get_openai_api_key()
-    )
+def get_llm(model: str = None, temperature: float = 0.0) -> ChatOllama:
+    """Get configured Ollama LLM instance."""
+    try:
+        base_url, default_model = get_ollama_config()
+        model_name = model or settings.ollama_model or default_model
+        
+        return ChatOllama(
+            base_url=base_url,
+            model=model_name,
+            temperature=temperature
+        )
+    except Exception as e:
+        logger.error(f"Failed to initialize Ollama LLM: {e}")
+        raise
 
 
 # ============================================================
@@ -46,7 +53,8 @@ def analyze_query_node(state: AgentState) -> Dict[str, Any]:
         
         Question: {question}
         
-        Return a JSON object with:
+        Return ONLY a raw JSON object. Do not include any introductory text,
+        explanations, or markdown code blocks. The response must start with {{ and end with }}.
         - intent: str (main topic/intent)
         - needs_document_search: bool
         - needs_web_search: bool
@@ -54,11 +62,12 @@ def analyze_query_node(state: AgentState) -> Dict[str, Any]:
         - gaps: list of strings (information gaps)"""
     )
     
-    chain = prompt | llm | StrOutputParser()
+    json_parser = JsonOutputParser()
+    chain = prompt | llm | json_parser
     
     try:
         result = chain.invoke({"question": state["question"]})
-        analysis = json.loads(result)
+        analysis = result
         
         return {
             "query_analysis": QueryAnalysis(
@@ -176,25 +185,27 @@ def grade_documents_node(state: AgentState) -> Dict[str, Any]:
         
         User Question: {question}
         
-        Return a JSON object with:
+        Return ONLY a raw JSON object. Do not include any explanatory text.
+        The response must start with {{ and end with }}.
         - binary_score: "yes" or "no"
         - score: float between 0 and 1
         - reasoning: brief explanation of why the document is or isn't relevant"""
     )
     
+    json_parser = JsonOutputParser()
     graded_scores: List[GradeScore] = []
     relevant_docs: List[Document] = []
     total_score = 0.0
     
     for doc in documents:
         try:
-            chain = grade_prompt | llm | StrOutputParser()
+            chain = grade_prompt | llm | json_parser
             result = chain.invoke({
                 "document": doc.page_content[:1000],  # Limit context
                 "question": question
             })
             
-            grade_result = json.loads(result)
+            grade_result = result
             score = GradeScore(
                 binary_score=grade_result.get("binary_score", "no"),
                 score=grade_result.get("score", 0.0),
@@ -433,7 +444,8 @@ def check_hallucination_node(state: AgentState) -> Dict[str, Any]:
         
         Context: {context}
         
-        Return a JSON object with:
+        Return ONLY a raw JSON object. Do not include any explanatory text.
+        The response must start with {{ and end with }}.
         - is_factual: bool (is the answer supported by context?)
         - confidence: float 0-1 (confidence in factual accuracy)
         - issues: list of strings (any potential hallucinations or inaccuracies)
@@ -442,15 +454,16 @@ def check_hallucination_node(state: AgentState) -> Dict[str, Any]:
     
     context = "\n\n".join([doc.page_content for doc in relevant_docs[:3]])
     
+    json_parser = JsonOutputParser()
     try:
-        chain = check_prompt | llm | StrOutputParser()
+        chain = check_prompt | llm | json_parser
         result = chain.invoke({
             "question": question,
             "answer": answer,
             "context": context
         })
         
-        check_result = json.loads(result)
+        check_result = result
         
         if not check_result.get("is_factual", True):
             logger.warning(f"Hallucination detected: {check_result.get('issues', [])}")

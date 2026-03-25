@@ -18,12 +18,18 @@ def get_project_root() -> Path:
 class Settings(BaseSettings):
     """Application settings with environment variable support."""
     
-    # API Keys
-    openai_api_key: str = Field(default="", description="OpenAI API Key")
+    # Ollama Configuration (Local LLM)
+    ollama_base_url: str = Field(default="http://localhost:11434", description="Ollama server URL")
+    ollama_model: str = Field(default="llama3.2", description="Ollama model name")
+    use_ollama: bool = Field(default=True, description="Use Ollama for LLM (set to False for API keys)")
+    
+    # API Keys (Optional - only if not using Ollama)
+    gemini_api_key: str = Field(default="", description="Google Gemini API Key")
+    openai_api_key: str = Field(default="", description="OpenAI API Key (fallback)")
     tavily_api_key: Optional[str] = Field(default=None, description="Tavily API Key for web search")
     
     # Model Configuration
-    llm_model: str = "gpt-4-turbo-preview"
+    llm_model: str = "llama3.2"  # Default to Ollama model
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     embedding_dimensions: int = 384
     
@@ -95,15 +101,28 @@ def init_directories():
 
 
 # Environment variable helpers
-def get_openai_api_key() -> str:
-    """Get OpenAI API key from environment or settings."""
-    api_key = os.getenv("OPENAI_API_KEY", settings.openai_api_key)
+def get_ollama_config() -> tuple:
+    """Get Ollama configuration (base_url, model)."""
+    base_url = os.getenv("OLLAMA_BASE_URL", settings.ollama_base_url)
+    model = os.getenv("OLLAMA_MODEL", settings.ollama_model)
+    return base_url, model
+
+
+def get_gemini_api_key() -> str:
+    """Get Gemini API key from environment or settings."""
+    api_key = os.getenv("GEMINI_API_KEY", settings.gemini_api_key)
     if not api_key:
         raise ValueError(
-            "OPENAI_API_KEY not set. Please set it in .env file or environment variable.\n"
-            "Example: echo 'OPENAI_API_KEY=sk-...' > .env"
+            "GEMINI_API_KEY not set. Please set it in .env file or environment variable.\n"
+            "Example: echo 'GEMINI_API_KEY=your-api-key' > .env"
         )
     return api_key
+
+
+def get_openai_api_key() -> str:
+    """Get OpenAI API key from environment or settings (fallback)."""
+    api_key = os.getenv("OPENAI_API_KEY", settings.openai_api_key)
+    return api_key  # Returns empty string if not set (optional)
 
 
 def get_tavily_api_key() -> Optional[str]:

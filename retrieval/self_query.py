@@ -6,18 +6,9 @@ from typing import List, Optional, Dict, Any, Callable
 import logging
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
-from langchain_core.structured_query import (
-    StructuredQuery,
-    Operator,
-    Comparator,
-    visit_structured_query
-)
-from langchain_core.structured_query import (
-    parse_structured_query
-)
-from langchain.retrievers.self_query.base import SelfQueryRetriever as LCSelfQueryRetriever
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain.chains.query_constructor.base import AttributeInfo
+# Note: SelfQueryRetriever has been removed in newer LangChain versions
+# Using a simplified implementation instead
+from langchain_huggingface import HuggingFaceEmbeddings
 
 from config.settings import settings
 
@@ -25,87 +16,80 @@ from config.settings import settings
 logger = logging.getLogger(__name__)
 
 
-# Metadata field descriptions for document schema
-DOCUMENT_SCHEMA = [
-    AttributeInfo(
-        name="source",
-        description="The file path or URL where the document came from",
-        type="string"
-    ),
-    AttributeInfo(
-        name="file_name",
-        description="The name of the PDF file",
-        type="string"
-    ),
-    AttributeInfo(
-        name="file_hash",
-        description="SHA256 hash of the source file for deduplication",
-        type="string"
-    ),
-    AttributeInfo(
-        name="loaded_at",
-        description="Timestamp when the document was loaded",
-        type="string"
-    ),
-    AttributeInfo(
-        name="chunk_id",
-        description="Index of the chunk within the original document",
-        type="integer"
-    ),
-    AttributeInfo(
-        name="total_chunks",
-        description="Total number of chunks in the document",
-        type="integer"
-    ),
-    AttributeInfo(
-        name="page",
-        description="Page number in the original PDF (if available)",
-        type="integer"
-    ),
-]
+# Metadata field descriptions for document schema (commented out - not used in simplified version)
+# DOCUMENT_SCHEMA = [
+#     AttributeInfo(
+#         name="source",
+#         description="The file path or URL where the document came from",
+#         type="string"
+#     ),
+#     AttributeInfo(
+#         name="file_name",
+#         description="The name of the PDF file",
+#         type="string"
+#     ),
+#     AttributeInfo(
+#         name="file_hash",
+#         description="SHA256 hash of the source file for deduplication",
+#         type="string"
+#     ),
+#     AttributeInfo(
+#         name="loaded_at",
+#         description="Timestamp when the document was loaded",
+#         type="string"
+#     ),
+#     AttributeInfo(
+#         name="chunk_id",
+#         description="Index of the chunk within the original document",
+#         type="integer"
+#     ),
+#     AttributeInfo(
+#         name="total_chunks",
+#         description="Total number of chunks in the document",
+#         type="integer"
+#     ),
+#     AttributeInfo(
+#         name="page",
+#         description="Page number in the original PDF (if available)",
+#         type="integer"
+#     ),
+# ]
 
 
 class SelfQueryRetrieverWrapper:
-    """Wrapper around LangChain's SelfQueryRetriever with custom enhancements."""
-    
+    """Wrapper around vectorstore similarity search (replaces SelfQueryRetriever)."""
+
     def __init__(
         self,
         vectorstore: Any,
-        llm: Any,
+        llm: Any = None,  # Not used in simplified version
         document_content_description: str = "Scientific or technical documents",
-        metadata_field_info: List[AttributeInfo] = None,
+        metadata_field_info: List = None,  # Not used in simplified version
         enable_limit: bool = True,
         search_kwargs: dict = None
     ):
         self.vectorstore = vectorstore
         self.llm = llm
         self.document_content_description = document_content_description
-        self.metadata_field_info = metadata_field_info or DOCUMENT_SCHEMA
+        self.metadata_field_info = metadata_field_info
         self.search_kwargs = search_kwargs or {"k": settings.vector_search_k}
-        
-        self.retriever = LCSelfQueryRetriever(
-            vectorstore=vectorstore,
-            llm=llm,
-            document_content_description=document_content_description,
-            metadata_field_info=self.metadata_field_info,
-            enable_limit=enable_limit,
-            search_kwargs=self.search_kwargs,
-            verbose=True
-        )
-    
+
+        # Use simple similarity search instead of SelfQueryRetriever
+        logger.info("Using simplified retriever (SelfQueryRetriever not available in this LangChain version)")
+
     def invoke(self, query: str) -> List[Document]:
-        """Invoke the retriever with a query."""
+        """Invoke the retriever with a query using similarity search."""
         try:
-            return self.retriever.invoke(query)
-        except Exception as e:
-            logger.error(f"Error in self-query retrieval: {str(e)}")
-            # Fallback to simple similarity search
             return self.vectorstore.similarity_search(query, k=self.search_kwargs.get("k", 5))
-    
+        except Exception as e:
+            logger.error(f"Error in retrieval: {str(e)}")
+            return []
+
     async def ainvoke(self, query: str) -> List[Document]:
-        """Async invoke the retriever."""
+        """Async invoke the retriever using similarity search."""
         try:
-            return await self.retriever.ainvoke(query)
+            # For async, we'll use the sync method since Chroma doesn't have async similarity_search
+            return self.vectorstore.similarity_search(query, k=self.search_kwargs.get("k", 5))
         except Exception as e:
             logger.error(f"Error in async self-query retrieval: {str(e)}")
             return self.vectorstore.similarity_search(query, k=self.search_kwargs.get("k", 5))

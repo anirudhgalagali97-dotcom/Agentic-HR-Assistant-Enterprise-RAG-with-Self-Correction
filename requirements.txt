@@ -1,48 +1,49 @@
 # Core Dependencies
-fastapi==0.109.0
-uvicorn[standard]==0.27.0
-gradio==4.16.0
+fastapi>=0.115.2
+uvicorn[standard]==0.32.0
+gradio==5.12.0
 
 # LangChain & LangGraph
-langchain==0.1.4
-langchain-community==0.0.17
-langchain-core==0.1.18
-langgraph==0.0.26
-langsmith==0.0.87
-
-# OpenAI
-openai==1.10.0
+langchain>=0.3.0,<0.4.0
+langchain-community>=0.3.0,<0.4.0
+langchain-core>=0.3.0,<0.4.0
+langchain-ollama>=0.1.0
+langchain-huggingface>=0.1.0
+langchain-chroma>=0.2.0
+langgraph>=0.2.0,<0.3.0
+langsmith>=0.2.0
 
 # Vector Store & Embeddings
-chromadb==0.4.22
-sentence-transformers==2.3.1
+chromadb>=0.5.0
+sentence-transformers>=3.0.0
 
 # Document Processing
-pypdf==4.0.1
-pypdfium2==4.17.0
+pypdf>=4.0.0
+pypdfium2>=4.17.0
 
 # Retrieval
-rank-bm25==0.2.2
+rank-bm25>=0.2.2
 
 # Web Search
-duckduckgo-search==4.1.1
+duckduckgo-search>=6.0.0
 
 # Utilities
-tiktoken==0.5.2
-pydantic==2.5.3
-pydantic-settings==2.1.0
-python-multipart==0.0.6
-httpx==0.26.0
-tenacity==8.2.3
-structlog==24.1.0
+tiktoken>=0.7.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+python-multipart>=0.0.9
+httpx>=0.27.0
+tenacity>=8.2.3
+structlog>=24.1.0
+python-dotenv>=1.0.0
 
 # Logging & Monitoring
-prometheus-client==0.19.0
-psutil==5.9.8
+prometheus-client>=0.19.0
+psutil>=5.9.0
 
 # Async
-aiofiles==23.2.1
+aiofiles>=23.2.0
 
 # Evaluation
-deepeval==0.21.56
-tabulate==0.9.0
+tabulate>=0.9.0
+numpy>=1.26.0

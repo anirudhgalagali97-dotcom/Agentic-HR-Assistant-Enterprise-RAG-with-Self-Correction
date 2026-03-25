@@ -170,12 +170,27 @@ async def query(request: QueryRequest):
     if agent is None:
         raise HTTPException(status_code=503, detail="Agent not initialized")
     
+    # Validate and normalize the question
+    if not isinstance(request.question, str):
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Question must be a string, got {type(request.question)}"
+        )
+    
+    # Clean the question
+    question = request.question.strip()
+    if not question:
+        raise HTTPException(
+            status_code=400, 
+            detail="Question cannot be empty"
+        )
+    
     start_time = time.time()
-    query_id = observability.start_query(request.question)
+    query_id = observability.start_query(question)
     
     try:
         result = agent.invoke(
-            question=request.question,
+            question=question,
             thread_id=request.thread_id
         )
         
@@ -210,7 +225,7 @@ async def query(request: QueryRequest):
         
         return QueryResponse(
             answer=result.get("answer", ""),
-            question=request.question,
+            question=question,
             sources=sources,
             context_precision=result.get("context_precision", 0.0),
             hallucination_score=result.get("hallucination_score", 0.0),
@@ -220,6 +235,9 @@ async def query(request: QueryRequest):
             web_search_used=len(result.get("web_search_results", [])) > 0
         )
         
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
     except Exception as e:
         logger.error(f"Query error: {e}")
         observability.end_query(query_id, {"status": "error", "error": str(e)})
@@ -335,5 +353,5 @@ if __name__ == "__main__":
         "api.main:app",
         host=settings.api_host,
         port=settings.api_port,
-        reload=True
+        reload=False 
     )

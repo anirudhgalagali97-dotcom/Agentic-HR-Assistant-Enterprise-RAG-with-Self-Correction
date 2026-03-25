@@ -3,7 +3,7 @@ Gradio Frontend for Agentic RAG System
 Provides a user-friendly web interface for querying documents
 """
 import gradio as gr
-from gradio.components import Textbox, TextArea, Button, Dropdown, Slider
+from gradio.components import Textbox, Button, Dropdown, Slider
 import requests
 import json
 import logging
@@ -26,23 +26,23 @@ class AgenticRAGUI:
         self.api_base_url = api_base_url
         self.history: List[Dict[str, str]] = []
     
-    def check_api_health(self) -> tuple[bool, str]:
+    def check_api_health(self) -> str:
         """Check if the API is running."""
         try:
-            response = requests.get(f"{self.api_base_url}/health", timeout=5)
+            response = requests.get(f"{self.api_base_url}/health", timeout=120)
             if response.status_code == 200:
                 data = response.json()
-                return True, f"API Status: {data.get('status', 'unknown')}"
-            return False, f"API returned status {response.status_code}"
+                return f"✅ API Status: {data.get('status', 'unknown')}"
+            return f"⚠️ API returned status {response.status_code}"
         except requests.exceptions.ConnectionError:
-            return False, "API not running. Please start the FastAPI server."
+            return "❌ API not running. Please start the FastAPI server."
         except Exception as e:
-            return False, f"Error: {str(e)}"
+            return f"❌ Error: {str(e)}"
     
     def get_document_stats(self) -> str:
         """Get document statistics."""
         try:
-            response = requests.get(f"{self.api_base_url}/stats/documents", timeout=5)
+            response = requests.get(f"{self.api_base_url}/stats/documents", timeout=120)
             if response.status_code == 200:
                 data = response.json()
                 return f"""Documents: {data.get('document_count', 0)}
@@ -56,7 +56,7 @@ Chunk Size: {data.get('chunk_size', 0)}"""
     def get_system_stats(self) -> str:
         """Get system statistics."""
         try:
-            response = requests.get(f"{self.api_base_url}/stats/system", timeout=5)
+            response = requests.get(f"{self.api_base_url}/stats/system", timeout=120)
             if response.status_code == 200:
                 data = response.json()
                 return f"""Total Queries: {data.get('total_queries', 0)}
@@ -147,7 +147,7 @@ Avg Precision: {data.get('avg_context_precision', 0):.2%}"""
         """Trigger document ingestion."""
         progress(0.1, desc="Starting ingestion...")
         try:
-            response = requests.post(f"{self.api_base_url}/ingest", timeout=5)
+            response = requests.post(f"{self.api_base_url}/ingest", timeout=120)
             if response.status_code == 200:
                 progress(1.0, desc="Ingestion started!")
                 return "Document ingestion started in background. Check back in a few minutes."
@@ -245,8 +245,12 @@ def create_gradio_app() -> gr.Blocks:
         # Event handlers
         def on_submit(question, show_src):
             answer, sources, stats = ui.query(question, show_src)
-            history = [(q, a) for q, a in zip(ui.history[::2], ui.history[1::2][::2])]
-            return answer, sources, stats, gr.update(value=history)
+            # Convert history dicts to gr.ChatMessage objects for Gradio 6.x Chatbot
+            chat_messages = [
+                gr.ChatMessage(role=msg["role"], content=msg["content"])
+                for msg in ui.history
+            ]
+            return answer, sources, stats, chat_messages
         
         submit_btn.click(
             fn=on_submit,
@@ -298,10 +302,10 @@ def main():
     
     # Get port from environment or default
     port = int(os.getenv("GRADIO_PORT", "7860"))
-    share = os.getenv("GRADIO_SHARE", "false").lower() == "true"
+    share = os.getenv("GRADIO_SHARE", "true").lower() == "true"
     
     app.launch(
-        server_name="0.0.0.0",
+        server_name="127.0.0.1",
         server_port=port,
         share=share
     )

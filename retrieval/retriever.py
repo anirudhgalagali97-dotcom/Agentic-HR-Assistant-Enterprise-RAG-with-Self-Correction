@@ -5,10 +5,8 @@ Using EnsembleRetriever for optimal retrieval performance
 from typing import List, Optional, Tuple, Any
 import logging
 from langchain_core.documents import Document
-from langchain_core.retrievers import BaseRetriever
-from langchain_community.retrievers import EnsembleRetriever
-from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_chroma import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
 from rank_bm25 import BM25Okapi
 import numpy as np
 
@@ -18,7 +16,7 @@ from config.settings import settings
 logger = logging.getLogger(__name__)
 
 
-class BM25Retriever(BaseRetriever):
+class BM25Retriever:
     """Custom BM25 Retriever using rank_bm25."""
     
     def __init__(
@@ -68,8 +66,12 @@ class BM25Retriever(BaseRetriever):
         
         return [self.documents[i] for i in top_indices if scores[i] > 0]
     
-    async def aget_relevant_documents(self, query: str) -> List[Document]:
-        """Async version of get_relevant_documents."""
+    def invoke(self, query: str) -> List[Document]:
+        """Invoke the retriever (LangChain-compatible interface)."""
+        return self.get_relevant_documents(query)
+    
+    async def ainvoke(self, query: str) -> List[Document]:
+        """Async version of invoke."""
         return self.get_relevant_documents(query)
 
 
@@ -105,18 +107,26 @@ class HybridRetriever:
             documents=self.documents,
             k=bm25_k
         )
-        
-        self.ensemble_retriever = EnsembleRetriever(
-            retrievers=[self.bm25_retriever, self.vector_retriever],
-            weights=[self.bm25_weight, self.vector_weight]
-        )
     
     def invoke(self, query: str) -> List[Document]:
         """Invoke the hybrid retriever."""
         try:
-            return self.ensemble_retriever.invoke(query)
+            # Get results from both retrievers
+            vector_results = self.vector_retriever.invoke(query)
+            bm25_results = self.bm25_retriever.invoke(query)
+            
+            # Simple merge: combine and deduplicate
+            seen_contents = set()
+            merged = []
+            for doc in vector_results + bm25_results:
+                content_hash = hash(doc.page_content)
+                if content_hash not in seen_contents:
+                    seen_contents.add(content_hash)
+                    merged.append(doc)
+            
+            return merged
         except Exception as e:
-            logger.error(f"Ensemble retrieval failed: {str(e)}")
+            logger.error(f"Hybrid retrieval failed: {str(e)}")
             return self._fallback_retrieval(query)
     
     def get_relevant_documents(self, query: str) -> List[Document]:
@@ -128,16 +138,15 @@ class HybridRetriever:
         return self.invoke(query)
     
     def _fallback_retrieval(self, query: str) -> List[Document]:
-        """Fallback to vector search if ensemble fails."""
+        """Fallback to vector search if hybrid fails."""
         logger.warning("Using fallback vector search")
         return self.vectorstore.similarity_search(query, k=settings.vector_search_k)
     
     def update_documents(self, documents: List[Document]):
         """Update documents and rebuild BM25 index."""
         self.documents = documents
-        if hasattr(self.bm25_retriever, 'add_documents'):
-            self.bm25_retriever.documents = documents
-            self.bm25_retriever._rebuild_index()
+        self.bm25_retriever.documents = documents
+        self.bm25_retriever._rebuild_index()
 
 
 class VectorStoreManager:
@@ -185,7 +194,15 @@ class VectorStoreManager:
             return []
         
         try:
-            return self.vectorstore.get().get("documents", [])
+            result = self.vectorstore.get()
+            docs_text = result.get("documents", [])
+            metadatas = result.get("metadatas", [])
+            documents = []
+            for i, text in enumerate(docs_text):
+                if isinstance(text, str):
+                    meta = metadatas[i] if i < len(metadatas) else {}
+                    documents.append(Document(page_content=text, metadata=meta or {}))
+            return documents
         except Exception as e:
             logger.error(f"Error getting documents: {str(e)}")
             return []

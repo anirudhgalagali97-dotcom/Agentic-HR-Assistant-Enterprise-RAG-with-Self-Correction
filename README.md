@@ -1,6 +1,6 @@
 # 🔍 Agentic RAG System
 
-A production-ready Agentic RAG (Retrieval-Augmented Generation) system built with LangChain, LangGraph, and OpenAI. This system implements intelligent document retrieval, hybrid search, and agentic workflows with hallucination guardrails and comprehensive observability.
+A production-ready Agentic RAG (Retrieval-Augmented Generation) system built with LangChain, LangGraph, and Ollama (local LLM). This system implements intelligent document retrieval, hybrid search, and agentic workflows with hallucination guardrails and comprehensive observability.
 
 ## 🌟 Features
 
@@ -57,11 +57,25 @@ A production-ready Agentic RAG (Retrieval-Augmented Generation) system built wit
 ### Prerequisites
 - Python 3.11+
 - Docker & Docker Compose (for containerized deployment)
-- OpenAI API Key
+- Ollama installed locally (https://ollama.ai)
 
 ### Local Development Setup
 
-1. **Clone and setup environment:**
+1. **Install Ollama:**
+```bash
+# Install Ollama (macOS/Linux)
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# For Windows, download from https://ollama.ai/download
+
+# Pull a model (llama3.2 is recommended)
+ollama pull llama3.2
+
+# Verify Ollama is running
+ollama list
+```
+
+2. **Clone and setup environment:**
 ```bash
 # Create virtual environment
 python -m venv venv
@@ -70,8 +84,8 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Create .env file
-echo "OPENAI_API_KEY=your-api-key-here" > .env
+# Create .env file (optional - defaults work out of the box)
+cp .env.example .env
 ```
 
 2. **Add PDF documents:**
@@ -182,9 +196,9 @@ curl http://localhost:8000/stats/documents
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `OPENAI_API_KEY` | - | **Required.** Your OpenAI API key |
-| `TAVILY_API_KEY` | - | Optional. Tavily API key for enhanced web search |
-| `LLM_MODEL` | `gpt-4-turbo-preview` | OpenAI model to use |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL |
+| `OLLAMA_MODEL` | `llama3.2` | Ollama model name |
+| `LLM_MODEL` | `llama3.2` | Ollama model name |
 | `EMBEDDING_MODEL` | `all-MiniLM-L6-v2` | Sentence transformer model |
 | `VECTOR_STORE_PATH` | `./data/chroma_db` | ChromaDB persistence path |
 | `API_HOST` | `0.0.0.0` | API server host |
@@ -226,7 +240,7 @@ curl -X POST http://localhost:8000/query \
 
 ## 🔒 Security Considerations
 
-1. **API Key Management**: Store your OpenAI API key securely in environment variables or a secrets manager
+1. **Local LLM**: This system uses Ollama for local LLM inference - no API keys required!
 2. **Input Validation**: All inputs are validated using Pydantic models
 3. **Rate Limiting**: Consider adding rate limiting for production deployments
 4. **CORS**: Configure CORS settings for your specific domain in production
@@ -251,4 +265,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ---
 
-Built with ❤️ using LangChain, LangGraph, and OpenAI
+Built with ❤️ using LangChain, LangGraph, and Ollama (Local LLM)

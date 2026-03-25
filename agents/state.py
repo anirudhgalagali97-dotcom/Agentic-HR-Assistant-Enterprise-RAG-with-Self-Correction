@@ -126,7 +126,24 @@ class GraphConfig:
 
 
 def create_initial_state(question: str) -> AgentState:
-    """Create initial state for a new query."""
+    """
+    Create initial state for a new query.
+    
+    Args:
+        question: The user's question (must be a string)
+        
+    Returns:
+        AgentState with all required fields initialized
+    """
+    # Ensure question is a valid string
+    if not isinstance(question, str):
+        raise ValueError(f"question must be a string, got {type(question)}: {question}")
+    
+    # Clean and validate the question
+    question = question.strip()
+    if not question:
+        raise ValueError("question cannot be empty")
+    
     return AgentState(
         question=question,
         documents=[],
@@ -139,11 +156,67 @@ def create_initial_state(question: str) -> AgentState:
         hallucination_score=0.0,
         generation="",
         generation_attempts=0,
-        route="retrieve",
-        reasoning="",
+        route="retrieve",  # Always start with retrieve
+        reasoning="Initial state created",
         iteration=0,
         max_iterations_reached=False,
         query_analysis=None,
         context_precision=0.0,
         sources_used=[]
     )
+
+
+def validate_state(state: AgentState) -> bool:
+    """
+    Validate that the state has the correct structure and types.
+    
+    Args:
+        state: The state to validate
+        
+    Returns:
+        True if valid, raises ValueError if invalid
+    """
+    # Check required string fields
+    if not isinstance(state.get("question"), str):
+        raise ValueError(f"question must be a string, got {type(state.get('question'))}")
+    
+    if not isinstance(state.get("route"), str):
+        raise ValueError(f"route must be a string, got {type(state.get('route'))}")
+    
+    if not isinstance(state.get("reasoning"), str):
+        raise ValueError(f"reasoning must be a string, got {type(state.get('reasoning'))}")
+    
+    if not isinstance(state.get("generation"), str):
+        raise ValueError(f"generation must be a string, got {type(state.get('generation'))}")
+    
+    # Check required numeric fields
+    if not isinstance(state.get("iteration"), int):
+        raise ValueError(f"iteration must be an int, got {type(state.get('iteration'))}")
+    
+    if not isinstance(state.get("retrieval_count"), int):
+        raise ValueError(f"retrieval_count must be an int, got {type(state.get('retrieval_count'))}")
+    
+    if not isinstance(state.get("generation_attempts"), int):
+        raise ValueError(f"generation_attempts must be an int, got {type(state.get('generation_attempts'))}")
+    
+    # Check boolean fields
+    if not isinstance(state.get("web_search_needed"), bool):
+        raise ValueError(f"web_search_needed must be a bool, got {type(state.get('web_search_needed'))}")
+    
+    if not isinstance(state.get("max_iterations_reached"), bool):
+        raise ValueError(f"max_iterations_reached must be a bool, got {type(state.get('max_iterations_reached'))}")
+    
+    # Check list fields
+    if not isinstance(state.get("documents"), list):
+        raise ValueError(f"documents must be a list, got {type(state.get('documents'))}")
+    
+    if not isinstance(state.get("relevant_documents"), list):
+        raise ValueError(f"relevant_documents must be a list, got {type(state.get('relevant_documents'))}")
+    
+    if not isinstance(state.get("web_search_results"), list):
+        raise ValueError(f"web_search_results must be a list, got {type(state.get('web_search_results'))}")
+    
+    if not isinstance(state.get("sources_used"), list):
+        raise ValueError(f"sources_used must be a list, got {type(state.get('sources_used'))}")
+    
+    return True

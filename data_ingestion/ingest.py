@@ -23,11 +23,11 @@ import logging
 from datetime import datetime
 from dataclasses import dataclass, asdict
 
-from langchain_community.document_loaders import PyPDFLoader, DirectoryLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter, Language
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_chroma import Chroma 
 from langchain_openai import OpenAIEmbeddings
 
 from config.settings import settings
@@ -132,7 +132,6 @@ class ProfessionalDocumentIngester:
         if os.path.exists(persist_dir) and os.listdir(persist_dir):
             logger.info(f"Loading existing vector store from {persist_dir}")
             self.vector_store = Chroma(
-                client=None,
                 collection_name=self.collection_name,
                 embedding_function=self.embeddings,
                 persist_directory=persist_dir
@@ -141,7 +140,6 @@ class ProfessionalDocumentIngester:
             logger.info(f"Creating new vector store at {persist_dir}")
             os.makedirs(persist_dir, exist_ok=True)
             self.vector_store = Chroma(
-                client=None,
                 collection_name=self.collection_name,
                 embedding_function=self.embeddings,
                 persist_directory=persist_dir
@@ -394,8 +392,7 @@ class ProfessionalDocumentIngester:
                 logger.error(error_msg)
                 errors.append(error_msg)
         
-        # Persist to disk
-        self.vector_store.persist()
+        # Chroma auto-persists when persist_directory is set
         logger.info(f"Successfully added {len(doc_ids)} documents to vector store")
         
         return len(doc_ids), doc_ids, errors
@@ -586,7 +583,6 @@ class ProfessionalDocumentIngester:
             if results and results["ids"]:
                 count = len(results["ids"])
                 self.vector_store.delete(ids=results["ids"])
-                self.vector_store.persist()
                 
                 # Remove from processed hashes
                 if file_hash in self._processed_hashes:
