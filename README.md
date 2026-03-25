@@ -1,268 +1,107 @@
-# 🔍 Agentic RAG System
+# 🤖 Agentic HR Assistant: Enterprise RAG with Self-Correction
 
-A production-ready Agentic RAG (Retrieval-Augmented Generation) system built with LangChain, LangGraph, and Ollama (local LLM). This system implements intelligent document retrieval, hybrid search, and agentic workflows with hallucination guardrails and comprehensive observability.
+![Python](https://img.shields.io/badge/Python-3.12-blue)
+![LangChain](https://img.shields.io/badge/LangChain-v0.2+-green)
+![LangGraph](https://img.shields.io/badge/LangGraph-Stateful-orange)
+![Ollama](https://img.shields.io/badge/Ollama-Llama_3.2-black)
+![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688)
 
-## 🌟 Features
+## 📌 Overview
 
-### Core Features
-- **📄 Data Ingestion Pipeline**: Load PDFs, split using RecursiveCharacterTextSplitter, store in persistent ChromaDB
-- **🔄 Hybrid Retrieval**: Ensemble retriever combining BM25 + Vector Search for optimal results
-- **🎯 Self-Querying Retriever**: LLM-powered metadata filtering from natural language queries
-- **🤖 Agentic Logic**: Stateful LangGraph workflow with intelligent routing
-- **🛡️ Hallucination Guardrails**: Document grading node that evaluates relevance before generation
-- **📊 Observability**: Comprehensive logging of token usage, latency, and context precision
+Moving beyond "Naive RAG," this project implements a highly advanced **Agentic Retrieval-Augmented Generation (RAG)** pipeline. Designed specifically for complex Enterprise HR policies, this assistant doesn't just blindly retrieve and generate—it analyzes intent, evaluates its own retrieved context, corrects hallucinations, and autonomously routes to live web searches when local knowledge falls short.
 
-### Agent Workflow
-1. **Analyze Query**: Understand user intent and determine search strategy
-2. **Retrieve**: Fetch context from vector database using hybrid retrieval
-3. **Grade Documents**: Evaluate document relevance (Hallucination Guardrail)
-4. **Web Search** (optional): Fallback to DuckDuckGo if local docs insufficient
-5. **Generate Answer**: Synthesize response using relevant context
-6. **Check Hallucination**: Final quality verification
+## ✨ Key Features
 
-## 🏗️ Architecture
+* **Agentic Orchestration:** Built with **LangGraph** to manage complex, cyclical conversational states and memory checkpointers.
+* **Intelligent Routing & Guardrails:** The system evaluates document relevance before generating an answer. If local documents score poorly, the agent autonomously falls back to a **DuckDuckGo Web Search**.
+* **Hybrid Search Retrieval:** Combines semantic vector search (**ChromaDB**) with keyword-based search (**BM25**) to ensure high recall for specialized HR terminology.
+* **Self-Correction (Hallucination Checker):** A final LLM evaluation node ensures the generated response is strictly grounded in the retrieved context.
+* **100% Local Execution:** Powered entirely by local LLMs via **Ollama (Llama 3.2)**, ensuring absolute data privacy for sensitive HR documents.
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         FastAPI Backend                          │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐│
-│  │   Upload    │  │   Query     │  │   Document Stats        ││
-│  │   Endpoint   │  │   Endpoint   │  │   Endpoint              ││
-│  └─────────────┘  └─────────────┘  └─────────────────────────┘│
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    Agentic RAG Workflow                          │
-│  ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐ │
-│  │ ANALYZE  │───▶│ RETRIEVE │───▶│  GRADE   │───▶│ GENERATE │ │
-│  └──────────┘    └──────────┘    └──────────┘    └──────────┘ │
-│       │                                     │                    │
-│       │         ┌──────────┐                │                    │
-│       └────────▶│WEBSearch │◀───────────────┘                    │
-│                 └──────────┘         (if no relevant docs)      │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      Observability Layer                         │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌────────────────┐ │
-│  │  Token Usage    │  │  Latency Track   │  │ Context Prec.  │ │
-│  └──────────────────┘  └──────────────────┘  └────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-```
+## 🏗️ System Architecture
 
-## 🚀 Quick Start
+The agent follows a stateful directed graph:
 
-### Prerequisites
-- Python 3.11+
-- Docker & Docker Compose (for containerized deployment)
-- Ollama installed locally (https://ollama.ai)
+1. **Analyze Query:** Extracts intent, metadata filters, and identifies knowledge gaps.
+2. **Retrieve:** Executes Hybrid Search (Vector + BM25) across chunked HR PDFs.
+3. **Grade Relevance:** Evaluates chunks. If relevant -> Generate. If irrelevant -> Web Search.
+4. **Generate Answer:** Synthesizes the final response with citations.
+5. **Check Hallucination:** Final guardrail to ensure factual grounding.
 
-### Local Development Setup
+## 💻 Tech Stack
 
-1. **Install Ollama:**
+* **Framework:** LangChain & LangGraph (Latest modular architecture)
+* **LLM:** Ollama (Llama 3.2)
+* **Vector Store:** ChromaDB
+* **Embeddings:** HuggingFace
+* **Backend:** FastAPI
+* **Frontend:** Gradio
+* **Evaluation:** DeepEval
+
+## 🚀 Installation & Setup
+
+### 1. Prerequisites
+
+* Python 3.11 or 3.12
+* [Ollama](https://ollama.ai/) installed and running locally.
+* Pull the required model:
+  ```bash
+  ollama pull llama3.2
+  ```
+
+### 2. Environment Setup
+
+Clone the repository and set up your virtual environment:
+
 ```bash
-# Install Ollama (macOS/Linux)
-curl -fsSL https://ollama.ai/install.sh | sh
+git clone https://github.com/anirudhgalagali97-dotcom/Agentic-HR-Assistant-Enterprise-RAG-with-Self-Correction.git
+cd Agentic-HR-Assistant-Enterprise-RAG-with-Self-Correction
+python -m venv .venv
 
-# For Windows, download from https://ollama.ai/download
-
-# Pull a model (llama3.2 is recommended)
-ollama pull llama3.2
-
-# Verify Ollama is running
-ollama list
+# Windows
+.\.venv\Scripts\activate
+# Mac/Linux
+source .venv/bin/activate
 ```
 
-2. **Clone and setup environment:**
-```bash
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+### 3. Install Dependencies
 
-# Install dependencies
+This project uses the modern, modularized LangChain ecosystem:
+
+```bash
 pip install -r requirements.txt
-
-# Create .env file (optional - defaults work out of the box)
-cp .env.example .env
+# Or install manually:
+pip install langchain-core langchain-community langchain-text-splitters langgraph langchain-chroma langchain-ollama duckduckgo-search lark fastapi uvicorn gradio
 ```
 
-2. **Add PDF documents:**
-```bash
-# Place your PDFs in the data/documents directory
-mkdir -p data/documents
-cp your-documents/*.pdf data/documents/
-```
+## 🎯 Usage
 
-3. **Run the system:**
+### Start the Backend API (FastAPI)
+
 ```bash
-# Option A: Run FastAPI server
 python -m api.main
+```
 
-# Option B: Run Gradio frontend
+### Start the User Interface (Gradio)
+
+Open a second terminal, activate the environment, and run:
+
+```bash
 python -m frontend.app
-
-# Option C: Run both (development)
-./start.sh
 ```
 
-4. **Access the interfaces:**
-- FastAPI: http://localhost:8000
-- Gradio UI: http://localhost:7860
-- API Docs: http://localhost:8000/docs
+Navigate to http://127.0.0.1:7860 in your browser to interact with the agent.
 
-### Docker Deployment
+## 📊 Evaluation
 
-```bash
-# Build and run with Docker Compose
-docker-compose up --build
+The system includes an automated evaluation suite (eval_suite.py) utilizing DeepEval. It measures metrics like Contextual Precision, Faithfulness, and Answer Relevancy across a benchmark of complex HR scenarios.
 
-# Or run in detached mode
-docker-compose up -d
-```
-
-## 📁 Project Structure
-
-```
-agentic-rag/
-├── config/
-│   └── settings.py          # Configuration management
-├── data_ingestion/
-│   └── ingest.py            # PDF loading and ChromaDB storage
-├── retrieval/
-│   ├── retriever.py         # Hybrid retrieval (BM25 + Vector)
-│   └── self_query.py        # Self-querying retriever
-├── agents/
-│   ├── state.py             # LangGraph state definition
-│   ├── nodes.py             # Graph nodes (Retrieve, WebSearch, Grade, Answer)
-│   └── graph.py              # LangGraph workflow
-├── observability/
-│   └── logging.py           # Token usage, latency, precision tracking
-├── api/
-│   └── main.py              # FastAPI backend
-├── frontend/
-│   └── app.py               # Gradio interface
-├── data/
-│   ├── documents/           # Place PDFs here
-│   └── chroma_db/           # Persistent vector store
-├── logs/                    # Application logs
-├── Dockerfile
-├── docker-compose.yml
-├── requirements.txt
-└── README.md
-```
-
-## 🔌 API Endpoints
-
-### Query Endpoints
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/query` | Query the RAG system |
-| GET | `/health` | Health check |
-
-### Document Management
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/ingest` | Ingest documents from data directory |
-| POST | `/upload` | Upload and ingest a single PDF |
-| DELETE | `/documents` | Clear all documents |
-| GET | `/stats/documents` | Get document statistics |
-
-### System
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/stats/system` | Get system statistics |
-| POST | `/reset` | Reset the agent and cache |
-
-### Example Usage
-
-```bash
-# Health check
-curl http://localhost:8000/health
-
-# Query the system
-curl -X POST http://localhost:8000/query \
-  -H "Content-Type: application/json" \
-  -d '{"question": "What is the main topic of the documents?"}'
-
-# Get document stats
-curl http://localhost:8000/stats/documents
-```
-
-## ⚙️ Configuration
-
-### Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL |
-| `OLLAMA_MODEL` | `llama3.2` | Ollama model name |
-| `LLM_MODEL` | `llama3.2` | Ollama model name |
-| `EMBEDDING_MODEL` | `all-MiniLM-L6-v2` | Sentence transformer model |
-| `VECTOR_STORE_PATH` | `./data/chroma_db` | ChromaDB persistence path |
-| `API_HOST` | `0.0.0.0` | API server host |
-| `API_PORT` | `8000` | API server port |
-| `GRADIO_PORT` | `7860` | Gradio server port |
-
-## 📊 Observability
-
-The system tracks the following metrics for every query:
-
-### Metrics Tracked
-- **Token Usage**: Prompt, completion, and total tokens
-- **Latency**: Total, retrieval, grading, and generation latency
-- **Context Precision**: Ratio of relevant documents to total retrieved
-- **Hallucination Score**: Probability of hallucination in generated answer
-- **Web Search Usage**: Whether web search was triggered
-
-### Accessing Metrics
-
-```bash
-# Get system statistics
-curl http://localhost:8000/stats/system
-
-# Check logs
-tail -f logs/rag_observability.log
-```
-
-## 🧪 Testing
-
-```bash
-# Run unit tests
-pytest tests/ -v
-
-# Test the API manually
-curl -X POST http://localhost:8000/query \
-  -H "Content-Type: application/json" \
-  -d '{"question": "What are the key findings in the documents?"}'
-```
-
-## 🔒 Security Considerations
-
-1. **Local LLM**: This system uses Ollama for local LLM inference - no API keys required!
-2. **Input Validation**: All inputs are validated using Pydantic models
-3. **Rate Limiting**: Consider adding rate limiting for production deployments
-4. **CORS**: Configure CORS settings for your specific domain in production
-
-## 🚢 Production Deployment
-
-For production deployment:
-
-1. **Use a reverse proxy** (nginx, Traefik) for SSL termination
-2. **Set up monitoring** (Prometheus, Grafana) using the observability endpoints
-3. **Configure proper CORS origins** in `api/main.py`
-4. **Use persistent storage** for vector database (mount Docker volumes)
-5. **Set up log rotation** for the observability logs
-
-## 📝 License
-
-MIT License - See LICENSE file for details
+**Note:** Full evaluation metric generation requires OpenAI API keys. However, the core RAG pipeline and agentic routing execute entirely locally.
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions, issues, and feature requests are welcome! Feel free to check the issues page.
 
----
+## 📄 License
 
-Built with ❤️ using LangChain, LangGraph, and Ollama (Local LLM)
+This project is licensed under the MIT License.
